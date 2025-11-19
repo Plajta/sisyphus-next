@@ -213,9 +213,11 @@ int main() {
 
             if(trigger_audio){
                 trigger_audio = false;
-                if (matched_color_valid){
+                if (matched_color_valid && button_index != 0){
                     char filename[16]; // 16 should be enough
-                    snprintf(filename, sizeof(filename), "%c_%d.wav", matched_color.name, button_index);
+                    uint8_t buttom_column = (button_index % 10)-1;
+                    uint8_t button_row = button_index / 10;
+                    snprintf(filename, sizeof(filename), "%c_%d_%d.wav", matched_color.name, button_row, buttom_column);
                     play_audio(filename);
                 }
             }
