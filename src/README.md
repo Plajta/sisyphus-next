@@ -35,6 +35,15 @@ The primary way of interacting with this firmware is using a [web interface](htt
 
 If you want to take a look inside or just want to do it yourself, look inside in the [Protocol](protocol/) directory for its README and a bunch of interesting scripts.
 
+To manually insert audio files, you also need to understand how the device chooses which file to play.
+When a user presses a button on the device's keyboard, the firmware tries to play a file from its filesystem by filling in the following name template:
+```
+<color>_<row>_<column>.wav
+```
+The `color` field is an ASCII letter obtained from the color LUT after a color measurement. For more info, see the [color](color/) directory.
+
+The `row` and `column` fields correspond to the button’s coordinates in the keyboard matrix, with the first button located at row 0 and column 0.
+
 ## Building
 Building was only tested on Linux, it might work elsewhere but only to a limited extent.
 
