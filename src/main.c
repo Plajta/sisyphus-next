@@ -53,9 +53,8 @@ static bool usb_background_task(repeating_timer_t *rt) {
 void scan_color(){
     color_measurement color;
     color_read_sensor(&color);
-    // 200 was just a shot i guessed and it seems to work, should probably be lowered
     // 170 is measured specifically for Sisyfoss's experimental 3D model right now, should be treated as a test number
-    matched_color_valid = (color_lut_get_entry(&color, &matched_color, 200, 170) == PICO_OK);
+    matched_color_valid = (color_lut_get_entry(&color, &matched_color, 100, 170) == PICO_OK);
 
     #ifdef PICO_DEFAULT_WS2812_PIN
     if (matched_color_valid){
