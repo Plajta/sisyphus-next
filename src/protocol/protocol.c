@@ -275,7 +275,7 @@ void play_command(char *filename) {
 
     print_newline("ack");
 
-    play_audio(filename);
+    play_audio(filename, 0x7FFF);
 }
 
 void reset_command() {

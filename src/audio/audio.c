@@ -12,6 +12,7 @@
 #include "pico/binary_info.h" // IWYU pragma: keep
 #include "pico/audio_i2s.h"
 #include "audio.h"
+#include <stdint.h>
 
 bool file_open = false;
 lfs_file_t audio_file;
@@ -68,7 +69,8 @@ void init_audio() {
     ap = producer_pool;
 }
 
-void play_audio(char* filename) {
+// Gain is 1.0 = 32767 (AUDIO_MAX_GAIN); 0.5 = 16383; 0.25 = 8191; 0 = 0
+void play_audio(char* filename, uint16_t gain) {
     int8_t error;
 
     if (file_open){
@@ -97,6 +99,19 @@ void play_audio(char* filename) {
         // This uint32_t should not overflow as sample count per buffer will never be that high
         uint32_t read_bytes = lfs_file_read(&lfs, &audio_file, samples, buffer->max_sample_count * sizeof(int16_t));
         buffer->sample_count = read_bytes / sizeof(int16_t);
+
+        // This is done to enforce fixed point math, a complicated way to do a simple thing
+        if (gain != AUDIO_MAX_GAIN) {
+            for(uint32_t i = 0; i < buffer->sample_count; i++){
+                int32_t tmp = (int32_t)samples[i] * gain;
+                tmp = tmp >> 15;
+
+                // Might need clamping???
+
+                samples[i] = (int16_t)tmp;
+            }
+        }
+
         give_audio_buffer(ap, buffer);
         if (read_bytes <= 1) { // If for whatever reason the file didn't have an even number of bytes
             lfs_file_close(&lfs, &audio_file);

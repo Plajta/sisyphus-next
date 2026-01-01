@@ -32,6 +32,9 @@ lfs_t lfs;
 
 volatile bool wakeup = false;
 volatile uint8_t button_index = 0;
+#ifdef SISYFOSS_LID_DETECT
+volatile bool lid_closed = false;
+#endif
 
 volatile bool trigger_color_scan = false;
 volatile bool trigger_audio = false;
@@ -40,6 +43,7 @@ static repeating_timer_t usb_timer;
 
 struct color_matched_entry matched_color;
 bool matched_color_valid = false;
+uint8_t audio_gain_shift_index = 0; // Should be clamped to ~6, indicates right shift of gain
 
 i2c_inst_t *sisyfoss_i2c_inst = i2c_default;
 
@@ -88,10 +92,32 @@ void keyboard_interrupt() {
 
     while (tca8418_num_events(sisyfoss_i2c_inst) > 0) {
         tca8418_get_key_from_fifo(sisyfoss_i2c_inst, &value, &pressed);
-        button_index = value;
-        if (pressed && !tud_cdc_connected()){
+        if (pressed && !tud_cdc_connected()) {
+            #ifdef SISYFOSS_LID_DETECT
+            if (lid_closed){
+                button_index = value;
+                wakeup = true;
+                trigger_audio = true;
+            }
+            else { // Settings mode
+                switch (value){
+                    case 1: // Volume down
+                        if (audio_gain_shift_index < 6)
+                            audio_gain_shift_index++;
+                        break;
+                    case 2: // Volume up
+                        if (audio_gain_shift_index > 0)
+                            audio_gain_shift_index--;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            #else
+            button_index = value;
             wakeup = true;
             trigger_audio = true;
+            #endif
         }
     }
 
@@ -103,9 +129,11 @@ void gpio_irq_dispatcher(uint gpio, uint32_t events){
     if (gpio == SISYFOSS_LID_DETECT && (events & GPIO_IRQ_EDGE_FALL)) {
         wakeup = true;
         trigger_color_scan = true;
+        lid_closed = true;
     }
     else if (gpio == SISYFOSS_LID_DETECT && (events & GPIO_IRQ_EDGE_RISE)) {
         matched_color_valid = false;
+        lid_closed = false;
     }
     #ifndef SISYFOSS_HAS_KEYBOARD_CONTROLLER
     else if (gpio == BUTTON_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
@@ -174,12 +202,19 @@ int main() {
     gpio_set_dir(SISYFOSS_LID_DETECT, GPIO_IN);
     gpio_pull_up(SISYFOSS_LID_DETECT);
     gpio_set_irq_enabled(SISYFOSS_LID_DETECT, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
+    lid_closed = !gpio_get(SISYFOSS_LID_DETECT);
     #endif
 
     // Enable GPIO IRQs
     irq_set_enabled(IO_IRQ_BANK0, true);
 
+    #ifdef SISYFOSS_LID_DETECT
+    if (lid_closed)
+        scan_color();
+    #else
     scan_color();
+    #endif
+
 
     while (true) {
         // Check for USB-CDC connection
@@ -217,7 +252,7 @@ int main() {
                     uint8_t buttom_column = (button_index % 10)-1;
                     uint8_t button_row = button_index / 10;
                     snprintf(filename, sizeof(filename), "%c_%d_%d.wav", matched_color.name, button_row, buttom_column);
-                    play_audio(filename);
+                    play_audio(filename, AUDIO_MAX_GAIN >> audio_gain_shift_index); // shift index is clamped
                 }
             }
         }
