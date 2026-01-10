@@ -101,11 +101,11 @@ void keyboard_interrupt() {
             }
             else { // Settings mode
                 switch (value){
-                    case 1: // Volume down
+                    case 11: // Volume down
                         if (audio_gain_shift_index < 6)
                             audio_gain_shift_index++;
                         break;
-                    case 2: // Volume up
+                    case 1: // Volume up
                         if (audio_gain_shift_index > 0)
                             audio_gain_shift_index--;
                         break;
