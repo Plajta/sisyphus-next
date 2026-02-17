@@ -1,3 +1,3 @@
-add_subdirectory(veml3328)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC color_sensor_veml3328)
+if(SISYFOSS_USE_COLOR_SENSOR)
+    add_subdirectory(veml3328)
+endif()

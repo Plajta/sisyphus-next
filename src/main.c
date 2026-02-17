@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <bsp/board_api.h>
-#include "bq25619.h"
 #include "class/cdc/cdc_device.h"
 #include "pico/binary_info.h" // IWYU pragma: keep
 #include <tusb.h>
@@ -12,13 +11,26 @@
 #include "hardware/i2c.h"
 #include "audio.h"
 #include "color.h"
-#include "tca8418.h"
 #include "ws2812.h"
 #include "lightshow.h"
 
+#ifdef SISYFOSS_HAS_KEYBOARD_CONTROLLER
+#include "tca8418.h"
+#endif
+
+#ifdef SISYFOSS_COLOR_VEML3328
+#include "veml3328.h"
+#endif
+
+#ifdef SISYFOSS_HAS_CHARGER
+#include "bq25619.h"
+#endif
+
 #include "littlefs-pico.h"
 
+#ifndef BUTTON_PIN
 #define BUTTON_PIN 14
+#endif
 
 #ifdef SISYFOSS_I2S_ENABLE
 bi_decl(bi_1pin_with_name(SISYFOSS_I2S_ENABLE, "I2S ENABLE"));
@@ -75,6 +87,7 @@ void scan_color(){
     #endif
 }
 
+#ifdef SISYFOSS_HAS_KEYBOARD_CONTROLLER
 void keyboard_interrupt() {
     if(!tca8418_k_int_available(sisyfoss_i2c_inst)){
         return;
@@ -124,8 +137,10 @@ void keyboard_interrupt() {
     // Clear the KE_INT interrupt bit by writing 1
     tca8418_k_int_reset(sisyfoss_i2c_inst);
 }
+#endif
 
 void gpio_irq_dispatcher(uint gpio, uint32_t events){
+    #ifdef SISYFOSS_LID_DETECT
     if (gpio == SISYFOSS_LID_DETECT && (events & GPIO_IRQ_EDGE_FALL)) {
         wakeup = true;
         trigger_color_scan = true;
@@ -135,24 +150,27 @@ void gpio_irq_dispatcher(uint gpio, uint32_t events){
         matched_color_valid = false;
         lid_closed = false;
     }
+    #endif
     #ifndef SISYFOSS_HAS_KEYBOARD_CONTROLLER
-    else if (gpio == BUTTON_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
+    if (gpio == BUTTON_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
         if(!tud_cdc_connected()){
             wakeup = true;
             button_index = 0;
+            trigger_audio = true;
         }
     }
     #else
-    else if (gpio == SISYFOSS_KEYBOARD_INTERRUPT && (events & GPIO_IRQ_EDGE_FALL)) {
+    if (gpio == SISYFOSS_KEYBOARD_INTERRUPT && (events & GPIO_IRQ_EDGE_FALL)) {
         keyboard_interrupt();
     }
     #endif
 }
 
 int main() {
+    int err;
     #ifdef PICO_DEFAULT_WS2812_PIN
     // First of all get the status LED, so errors can be shown
-    int err = ws2812_init(PICO_DEFAULT_WS2812_PIN);
+    err = ws2812_init(PICO_DEFAULT_WS2812_PIN);
     hard_assert(err);
     #endif
 
@@ -162,7 +180,10 @@ int main() {
     gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
     gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
     bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C));
+
+    #ifdef SISYFOSS_HAS_CHARGER
     bq25619_init(sisyfoss_i2c_inst); // init charger before all due safety reasons
+    #endif
 
     tusb_init();
     // Run tud_task every millisecond just like pico_stdio would do
