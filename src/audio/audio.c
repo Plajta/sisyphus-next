@@ -36,7 +36,7 @@ void init_audio() {
 
     static audio_format_t audio_format = {
         .format = AUDIO_BUFFER_FORMAT_PCM_S16,
-        .sample_freq = 22100,
+        .sample_freq = 22000,
         .channel_count = 1,
     };
 
