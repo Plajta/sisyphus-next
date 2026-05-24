@@ -48,6 +48,7 @@ volatile uint8_t button_index = 0;
 volatile bool lid_closed = false;
 #endif
 
+volatile bool trigger_volume_sample = false;
 volatile bool trigger_color_scan = false;
 volatile bool trigger_audio = false;
 
@@ -56,6 +57,7 @@ static repeating_timer_t usb_timer;
 struct color_matched_entry matched_color;
 bool matched_color_valid = false;
 uint8_t audio_gain_shift_index = 0; // Should be clamped to ~6, indicates right shift of gain
+#define AUDIO_GAIN_SHIFT_INDEX_MAX 6
 
 i2c_inst_t *sisyfoss_i2c_inst = i2c_default;
 
@@ -115,12 +117,16 @@ void keyboard_interrupt() {
             else { // Settings mode
                 switch (value){
                     case 11: // Volume down
-                        if (audio_gain_shift_index < 6)
+                        if (audio_gain_shift_index < AUDIO_GAIN_SHIFT_INDEX_MAX)
                             audio_gain_shift_index++;
+                        trigger_volume_sample = true;
+                        wakeup = true;
                         break;
                     case 1: // Volume up
                         if (audio_gain_shift_index > 0)
                             audio_gain_shift_index--;
+                        trigger_volume_sample = true;
+                        wakeup = true;
                         break;
                     default:
                         break;
@@ -260,6 +266,22 @@ int main() {
 
         if (wakeup) {
             wakeup = false;
+
+            if (trigger_volume_sample){
+                trigger_volume_sample = false;
+
+                // Brighness steps between volume levels; +1 so min volume still has light
+                uint8_t component_brightness_step = (LIGHTSHOW_MAX_WHITE_COMPONENT_BRIGHTNESS / (AUDIO_GAIN_SHIFT_INDEX_MAX));
+                uint8_t component_brightness = LIGHTSHOW_MAX_WHITE_COMPONENT_BRIGHTNESS - (component_brightness_step * audio_gain_shift_index);
+
+                static lightshow_flash_state_t blink_state;
+
+                blink_state.base_color = (component_brightness << 16) | (component_brightness << 8) | component_brightness;
+                blink_state.duration = 500;
+
+                lightshow_flash_setup(&blink_state);
+                play_audio("volume_sample.wav", AUDIO_MAX_GAIN >> audio_gain_shift_index);
+            }
 
             if (trigger_color_scan) {
                 trigger_color_scan = false;

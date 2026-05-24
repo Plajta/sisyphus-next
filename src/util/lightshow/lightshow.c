@@ -10,7 +10,7 @@ volatile bool led_light_state = false;
 
 repeating_timer_t timer;
 
-bool lightshow_quartic_fade(repeating_timer_t *rt) {
+static bool lightshow_quartic_fade(repeating_timer_t *rt) {
     lightshow_quartic_fade_state_t *s = (lightshow_quartic_fade_state_t *)rt->user_data;
     s->t += LIGHTSHOW_FADE_TIME_DELTA;
 
@@ -56,4 +56,15 @@ bool lightshow_quartic_fade(repeating_timer_t *rt) {
 void lightshow_fade_setup(lightshow_quartic_fade_state_t *initial_state){
     cancel_repeating_timer(&timer);
     add_repeating_timer_ms(-LIGHTSHOW_FADE_TIME_DELTA_MS, lightshow_quartic_fade, initial_state, &timer);
+}
+
+static bool lightshow_turn_off(){
+    ws2812_put_color(0);
+    return false;
+}
+
+void lightshow_flash_setup(lightshow_flash_state_t *initial_state){
+    cancel_repeating_timer(&timer);
+    ws2812_put_color(initial_state->base_color);
+    add_repeating_timer_ms(-initial_state->duration, lightshow_turn_off, NULL, &timer);
 }
