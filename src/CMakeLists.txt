@@ -155,6 +155,8 @@ pico_set_program_url(${PROJECT_NAME} "https://plajta.eu")
 target_link_options(${PROJECT_NAME} PRIVATE -Wl,--print-memory-usage)
 
 if(USE_ETERNITY)
+    set(ETERNITY_FORCE_IN_FLASH ON)
+    set(ETERNITY_FORCE_TOP_STACK_POINTER ON)
     add_subdirectory(eternity)
     configure_file(${CMAKE_CURRENT_LIST_DIR}/memmap_eternity.ld.template ${CMAKE_CURRENT_BINARY_DIR}/memmap_custom.ld)
 else()
