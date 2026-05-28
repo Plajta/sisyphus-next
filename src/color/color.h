@@ -41,8 +41,4 @@ void color_rgb_to_hsv(float r, float g, float b, color_measurement *output_hsv);
 int color_init();
 int color_read_sensor(color_measurement *color);
 int color_lut_get_entry(color_measurement *color, struct color_matched_entry *output, int max_dist, uint8_t min_clear);
-
-// Debug code
-#ifdef SISYPHUS_DEBUG
 struct color_entry* get_color_lut_entry(uint8_t index);
-#endif

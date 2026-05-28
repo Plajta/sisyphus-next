@@ -214,15 +214,12 @@ int color_read_sensor(color_measurement *color) {
     return PICO_OK;
 }
 
-// Debug code
-#ifdef SISYPHUS_DEBUG
 struct color_entry* get_color_lut_entry(uint8_t index){
-    if (color_lut.data != NULL) {
+    if (color_lut.data != NULL || index < color_lut.len) {
         return &color_lut.data[index];
     }
     return NULL;
 }
-#endif
 
 /*
  * Finds the closest LUT color to the one on input.

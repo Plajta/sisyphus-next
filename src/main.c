@@ -67,6 +67,18 @@ static bool usb_background_task(repeating_timer_t *rt) {
     return true; // Keep repeating
 }
 
+void light_fade_helper(uint32_t base_color){
+    static lightshow_quartic_fade_state_t lightshow_state;
+
+    lightshow_state.t = 0;
+    lightshow_state.duration = 0.5;
+    lightshow_state.reverse = false;
+    lightshow_state.start_next_reversed = true;
+    lightshow_state.base_color = base_color;
+
+    lightshow_fade_setup(&lightshow_state);
+}
+
 // Taken out so we can call it before loop and on trigger
 void scan_color(){
     color_measurement color;
@@ -75,18 +87,24 @@ void scan_color(){
     matched_color_valid = (color_lut_get_entry(&color, &matched_color, 100, 170) == PICO_OK);
 
     #ifdef PICO_DEFAULT_WS2812_PIN
-    if (matched_color_valid){
-        static lightshow_quartic_fade_state_t lightshow_state;
-
-        lightshow_state.t = 0;
-        lightshow_state.duration = 0.5;
-        lightshow_state.reverse = false;
-        lightshow_state.start_next_reversed = true;
-        lightshow_state.base_color = matched_color.led_color_representation;
-
-        lightshow_fade_setup(&lightshow_state);
-    }
+    if (matched_color_valid)
+        light_fade_helper(matched_color.led_color_representation);
     #endif
+}
+
+static void color_preset_helper(uint8_t index){
+    struct color_entry* color_index;
+    color_index = get_color_lut_entry(index);
+
+    if (color_index == NULL){
+        matched_color_valid = false;
+        return;
+    }
+
+    matched_color.name = color_index->color_name;
+    matched_color.led_color_representation = color_index->led_color_representation;
+    matched_color_valid = true;
+    light_fade_helper(matched_color.led_color_representation);
 }
 
 #ifdef SISYFOSS_HAS_KEYBOARD_CONTROLLER
@@ -128,6 +146,30 @@ void keyboard_interrupt() {
                         trigger_volume_sample = true;
                         wakeup = true;
                         break;
+                    case 21: // First row of color table
+                        color_preset_helper(0);
+                        break;
+                    case 22:
+                        color_preset_helper(1);
+                        break;
+                    case 23:
+                        color_preset_helper(2);
+                        break;
+                    case 24:
+                        color_preset_helper(3);
+                        break;
+                    case 31:
+                        color_preset_helper(4);
+                        break;
+                    case 32:
+                        color_preset_helper(5);
+                        break;
+                    case 33:
+                        color_preset_helper(6);
+                        break;
+                    case 34: // Last row of color table
+                        color_preset_helper(7);
+                        break;
                     default:
                         break;
                 }
@@ -148,8 +190,10 @@ void keyboard_interrupt() {
 void gpio_irq_dispatcher(uint gpio, uint32_t events){
     #ifdef SISYFOSS_LID_DETECT
     if (gpio == SISYFOSS_LID_DETECT && (events & GPIO_IRQ_EDGE_FALL)) {
-        wakeup = true;
-        trigger_color_scan = true;
+        if (!matched_color_valid){
+            wakeup = true;
+            trigger_color_scan = true;
+        }
         lid_closed = true;
     }
     else if (gpio == SISYFOSS_LID_DETECT && (events & GPIO_IRQ_EDGE_RISE)) {
