@@ -18,17 +18,25 @@ class ColorInfo:
 
 
 colorinfo_list = [
-    ColorInfo(name="red", code="r", representation=0xAA0000, ansi_color="\033[0;31m"),
-    ColorInfo(name="green", code="g", representation=0x00AA00, ansi_color="\033[0;32m"),
-    ColorInfo(name="blue", code="b", representation=0x0000AA, ansi_color="\033[0;34m"),
-    ColorInfo(name="cyan", code="c", representation=0x00AAAA, ansi_color="\033[0;36m"),
     ColorInfo(
-        name="magenta", code="m", representation=0xAA00AA, ansi_color="\033[0;35m"
+        name="red (1)", code="r", representation=0xAA0000, ansi_color="\033[0;31m"
     ),
     ColorInfo(
-        name="yellow", code="y", representation=0xAAAA00, ansi_color="\033[0;33m"
+        name="yellow (2)", code="y", representation=0xAAAA00, ansi_color="\033[0;33m"
     ),
-    ColorInfo(name="white", code="w", representation=0x555555, ansi_color=""),
+    ColorInfo(
+        name="green (3)", code="g", representation=0x00AA00, ansi_color="\033[0;32m"
+    ),
+    ColorInfo(
+        name="cyan (4)", code="c", representation=0x00AAAA, ansi_color="\033[0;36m"
+    ),
+    ColorInfo(
+        name="blue (5)", code="b", representation=0x0000AA, ansi_color="\033[0;34m"
+    ),
+    ColorInfo(
+        name="magenta (6)", code="m", representation=0xAA00AA, ansi_color="\033[0;35m"
+    ),
+    ColorInfo(name="white (7)", code="w", representation=0x555555, ansi_color=""),
 ]
 
 
@@ -81,3 +89,5 @@ if __name__ == "__main__":
         )
 
     device.push(buf, buf_size, "color_lookup_table", update_progress)
+    print()
+    print("\033[32mDone!\033[0m")
