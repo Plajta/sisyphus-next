@@ -54,3 +54,6 @@ if __name__ == "__main__":
         )
 
     device.push(wav_buffer, size, remote_name, update_progress)
+
+    print()
+    print("\033[1;32mDone!\033[0m")
