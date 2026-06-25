@@ -4,13 +4,13 @@ set(DEVICE_NAME "Sisyphus" CACHE STRING "The device name used for the \"info\" c
 
 # Hardware Feature Selection (Automatic based on Board)
 if(PICO_BOARD STREQUAL "plajta_sisyfoss_beta")
-    set(KEYBOARD_DEFAULT ON)
-    set(CHARGER_DEFAULT ON)
-    set(COLOR_SENSOR_DEFAULT ON)
+  set(KEYBOARD_DEFAULT ON)
+  set(CHARGER_DEFAULT ON)
+  set(COLOR_SENSOR_DEFAULT ON)
 else()
-    set(KEYBOARD_DEFAULT OFF)
-    set(CHARGER_DEFAULT OFF)
-    set(COLOR_SENSOR_DEFAULT OFF)
+  set(KEYBOARD_DEFAULT OFF)
+  set(CHARGER_DEFAULT OFF)
+  set(COLOR_SENSOR_DEFAULT OFF)
 endif()
 
 option(SISYFOSS_USE_KEYBOARD "Use TCA8418 keyboard controller" ${KEYBOARD_DEFAULT})
@@ -19,27 +19,28 @@ option(SISYFOSS_USE_COLOR_SENSOR "Use VEML3328 color sensor" ${COLOR_SENSOR_DEFA
 
 option(SISYPHUS_DEBUG "Enable debug flag" OFF)
 option(USE_ETERNITY "Enable usage of Eternity serial bootloader" OFF)
+option(SISYPHUS_HWTEST "Enable hardware test mode" OFF)
 
 # Git info for info command
 if(NOT DEFINED GIT_COMMIT_SHA OR GIT_COMMIT_SHA STREQUAL "")
-    execute_process(
+  execute_process(
         COMMAND git rev-parse --short HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         OUTPUT_VARIABLE GIT_COMMIT_SHA
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
     )
-    execute_process(
+  execute_process(
         COMMAND git diff --quiet
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         RESULT_VARIABLE GIT_DIFF_RESULT
         ERROR_QUIET
     )
 
-    # If there are uncommitted changes, append -dirty to the commit SHA
-    if(NOT GIT_DIFF_RESULT EQUAL 0)
-        set(GIT_COMMIT_SHA "${GIT_COMMIT_SHA}-dirty")
-    endif()
+  # If there are uncommitted changes, append -dirty to the commit SHA
+  if(NOT GIT_DIFF_RESULT EQUAL 0)
+    set(GIT_COMMIT_SHA "${GIT_COMMIT_SHA}-dirty")
+  endif()
 endif()
 
 # Get the current build date and time
@@ -72,7 +73,9 @@ add_executable(${PROJECT_NAME}
 target_sources(${PROJECT_NAME} PRIVATE
     audio/audio.c
     color/color.c
+    protocol/protocol_common.c
     protocol/protocol.c
+    protocol/commands.c
     usb/usb_descriptors.c
     util/lightshow/lightshow.c
 )
@@ -91,19 +94,19 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 if(SISYPHUS_DEBUG)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE SISYPHUS_DEBUG)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE SISYPHUS_DEBUG)
 endif()
 
 # Storage definitions
 if(NOT DEFINED LITTLEFS_SIZE_BYTES_STRING)
-    set(LITTLEFS_SIZE_BYTES_STRING "(1024 * 1024)")
+  set(LITTLEFS_SIZE_BYTES_STRING "(1024 * 1024)")
 endif()
 
 math(EXPR LITTLEFS_SIZE_BYTES "${LITTLEFS_SIZE_BYTES_STRING}")
 math(EXPR FLASH_SIZE_BYTES "${PICO_FLASH_SIZE_BYTES}")
 
 if(LITTLEFS_SIZE_BYTES GREATER_EQUAL FLASH_SIZE_BYTES)
-    message(FATAL_ERROR "LITTLEFS Partition size (${LITTLEFS_SIZE_BYTES}) must be smaller than flash size (${FLASH_SIZE_BYTES})!")
+  message(FATAL_ERROR "LITTLEFS Partition size (${LITTLEFS_SIZE_BYTES}) must be smaller than flash size (${FLASH_SIZE_BYTES})!")
 endif()
 
 # Subdirectories and Libraries
@@ -126,19 +129,26 @@ set(SISYPHUS_LIBS
 
 # Conditional components
 if(SISYFOSS_USE_KEYBOARD)
-    add_subdirectory(keyboard)
-    list(APPEND SISYPHUS_LIBS keyboard_tca8418)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE SISYFOSS_HAS_KEYBOARD_CONTROLLER)
+  add_subdirectory(keyboard)
+  list(APPEND SISYPHUS_LIBS keyboard_tca8418)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE SISYFOSS_HAS_KEYBOARD_CONTROLLER)
 endif()
 
 if(SISYFOSS_USE_CHARGER)
-    list(APPEND SISYPHUS_LIBS charger_bq25619)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE SISYFOSS_HAS_CHARGER)
+  list(APPEND SISYPHUS_LIBS charger_bq25619)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE SISYFOSS_HAS_CHARGER)
 endif()
 
 if(SISYFOSS_USE_COLOR_SENSOR)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE SISYFOSS_COLOR_VEML3328)
-    list(APPEND SISYPHUS_LIBS color_sensor_veml3328)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE SISYFOSS_COLOR_VEML3328)
+  list(APPEND SISYPHUS_LIBS color_sensor_veml3328)
+endif()
+
+if(SISYPHUS_HWTEST)
+  add_subdirectory(hwtest)
+  list(APPEND SISYPHUS_LIBS hwtest)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE SISYPHUS_HWTEST)
+  message(STATUS "SISYPHUS_HWTEST enabled — hardware test mode active")
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${SISYPHUS_LIBS})
@@ -155,12 +165,12 @@ pico_set_program_url(${PROJECT_NAME} "https://plajta.eu")
 target_link_options(${PROJECT_NAME} PRIVATE -Wl,--print-memory-usage)
 
 if(USE_ETERNITY)
-    set(ETERNITY_FORCE_IN_FLASH ON)
-    set(ETERNITY_FORCE_TOP_STACK_POINTER ON)
-    add_subdirectory(eternity)
-    configure_file(${CMAKE_CURRENT_LIST_DIR}/memmap_eternity.ld.template ${CMAKE_CURRENT_BINARY_DIR}/memmap_custom.ld)
+  set(ETERNITY_FORCE_IN_FLASH ON)
+  set(ETERNITY_FORCE_TOP_STACK_POINTER ON)
+  add_subdirectory(eternity)
+  configure_file(${CMAKE_CURRENT_LIST_DIR}/memmap_eternity.ld.template ${CMAKE_CURRENT_BINARY_DIR}/memmap_custom.ld)
 else()
-    configure_file(${CMAKE_CURRENT_LIST_DIR}/memmap_stage2.ld.template ${CMAKE_CURRENT_BINARY_DIR}/memmap_custom.ld)
+  configure_file(${CMAKE_CURRENT_LIST_DIR}/memmap_stage2.ld.template ${CMAKE_CURRENT_BINARY_DIR}/memmap_custom.ld)
 endif()
 
 pico_set_linker_script(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR}/memmap_custom.ld)
@@ -176,24 +186,24 @@ add_custom_target(flash
 )
 
 if(USE_ETERNITY)
-    add_custom_command(TARGET flash POST_BUILD
+  add_custom_command(TARGET flash POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/eternity/protocol/flasher.py ${PROJECT_NAME}.bin
     )
 else()
-    add_custom_command(TARGET flash POST_BUILD
+  add_custom_command(TARGET flash POST_BUILD
         COMMAND picotool load -f -x ${PROJECT_NAME}.uf2
     )
 endif()
 
 # Eternity Combined Binary
 if(USE_ETERNITY)
-    if(NOT DEFINED ETERNITY_SIZE_BYTES_STRING)
-        set(ETERNITY_SIZE_BYTES_STRING "(32 * 1024)") # Default if not defined
-    endif()
-    math(EXPR ETERNITY_SIZE_BYTES "${ETERNITY_SIZE_BYTES_STRING}")
-    set(OUTPUT_BIN "${CMAKE_BINARY_DIR}/combined.bin")
+  if(NOT DEFINED ETERNITY_SIZE_BYTES_STRING)
+    set(ETERNITY_SIZE_BYTES_STRING "(32 * 1024)") # Default if not defined
+  endif()
+  math(EXPR ETERNITY_SIZE_BYTES "${ETERNITY_SIZE_BYTES_STRING}")
+  set(OUTPUT_BIN "${CMAKE_BINARY_DIR}/combined.bin")
 
-    add_custom_command(
+  add_custom_command(
         OUTPUT ${OUTPUT_BIN}
         COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/eternity/merge_binaries.py
             ${CMAKE_BINARY_DIR}/eternity/eternity.bin
@@ -205,17 +215,17 @@ if(USE_ETERNITY)
         VERBATIM
     )
 
-    if(NOT PICO_NO_PICOTOOL)
-        set(OUTPUT_UF2 "${CMAKE_BINARY_DIR}/combined.uf2")
-        add_custom_command(
+  if(NOT PICO_NO_PICOTOOL)
+    set(OUTPUT_UF2 "${CMAKE_BINARY_DIR}/combined.uf2")
+    add_custom_command(
             OUTPUT ${OUTPUT_UF2}
             COMMAND picotool uf2 convert --quiet --family rp2040 ${OUTPUT_BIN} ${OUTPUT_UF2}
             DEPENDS ${OUTPUT_BIN}
             COMMENT "Generating combined UF2"
             VERBATIM
         )
-        add_custom_target(combine_eternity ALL DEPENDS ${OUTPUT_BIN} ${OUTPUT_UF2})
-    else()
-        add_custom_target(combine_eternity ALL DEPENDS ${OUTPUT_BIN})
-    endif()
+    add_custom_target(combine_eternity ALL DEPENDS ${OUTPUT_BIN} ${OUTPUT_UF2})
+  else()
+    add_custom_target(combine_eternity ALL DEPENDS ${OUTPUT_BIN})
+  endif()
 endif()

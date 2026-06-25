@@ -19,7 +19,7 @@
 #endif
 
 #ifdef SISYFOSS_COLOR_VEML3328
-#include "veml3328.h"
+#include "veml3328.h" // IWYU pragma: keep
 #endif
 
 #ifdef SISYFOSS_HAS_CHARGER

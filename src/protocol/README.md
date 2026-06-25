@@ -5,9 +5,3 @@ Sisyphus firmware has its own protocol to communicate with the web interface.
 
 This protocol doesn't have to be used only with the interface, this directory includes a [reference Python implementation](protocol.py) of the protocol that you are free to use for your own endeavors.
 It also includes [full documentation](PROTOCOL.md) of the protocol that should be enough for you to write your own client. If it's not enough yell at me in the issues.
-
-If you just want to access the device, you can also use a [handy shell](shell.py).
-
-You can also use the [audio conversion script](convert.py) for loading your audio on your device.
-
-There is also a [script](color_graph.py) originally meant for debugging the color sensor.
