@@ -1,0 +1,10 @@
+/* Empty file
+
+   IT HAS TO BE INCLUDED DUE TO THE REASONS BELOW.
+
+   In a normal RP2040 memory map this would be the place where a second
+   stage bootloader is being inserted into the flash.
+
+   In the case of your project that is already loaded before Eternity so
+   you have to remove it.
+*/

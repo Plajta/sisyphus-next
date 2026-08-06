@@ -1,0 +1,10 @@
+/* Defines the following symbols for use by code:
+    __littlefs_start
+*/
+
+SECTIONS
+{
+    .section_littlefs : {
+        PROVIDE(__littlefs_start = .);
+    } > LITTLEFS
+}
